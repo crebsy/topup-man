@@ -51,6 +51,8 @@ services:
       - POSTGRES_HOST=postgres
       - DYRPC_BASE_URL
       - DYRPC_TOKEN
+      - RPC_URL
+      - EXPLORER_URL
     depends_on:
       - postgres
     restart: always
