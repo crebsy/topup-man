@@ -26,8 +26,7 @@ services:
     restart: always
 
   event-processor:
-    build: .
-    image: topup-man
+    image: ghcr.io/crebsy/topup-man
     entrypoint: /app/event-processor.sh
     environment:
       - POSTGRES_USER
@@ -41,8 +40,7 @@ services:
     restart: always
 
   remote-syncer:
-    build: .
-    image: topup-man
+    image: ghcr.io/crebsy/topup-man
     entrypoint: /app/remote-syncer.sh
     environment:
       - POSTGRES_USER
