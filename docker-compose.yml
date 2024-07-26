@@ -1,0 +1,56 @@
+version: "3.8"
+
+volumes:
+  postgres_data: {}
+
+networks:
+  default:
+    name: topup-man
+
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - 127.0.0.1:5432:5432
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-topup_man}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-topup_man}
+      - POSTGRES_DB=${POSTGRES_DB:-topup_man}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U topup_man"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  event-processor:
+    build: .
+    image: topup-man
+    entrypoint: /app/event-processor.sh
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - POSTGRES_HOST=postgres
+      - SAFE_ADDRESS
+      - START_BLOCK
+    depends_on:
+      - postgres
+    restart: always
+
+  remote-syncer:
+    build: .
+    image: topup-man
+    entrypoint: /app/remote-syncer.sh
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - POSTGRES_HOST=postgres
+      - DYRPC_BASE_URL
+      - DYRPC_TOKEN
+    depends_on:
+      - postgres
+    restart: always
