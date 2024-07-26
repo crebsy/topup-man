@@ -35,6 +35,8 @@ services:
       - POSTGRES_HOST=postgres
       - SAFE_ADDRESS
       - START_BLOCK
+      - RPC_URL
+      - EXPLORER_URL
     depends_on:
       - postgres
     restart: always

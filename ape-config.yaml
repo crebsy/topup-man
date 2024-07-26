@@ -9,12 +9,12 @@ networks:
 geth:
   base:
     mainnet:
-      uri: https://rpc.ankr.com/base
+      uri: ${RPC_URL}
 
 blockscout:
   base:
     mainnet:
-      uri: https://api.basescan.org
+      uri: ${EXPLORER_URL}
 
 plugins:
   - name: base
