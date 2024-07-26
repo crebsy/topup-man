@@ -20,7 +20,7 @@ class Topup(db.Entity):
     api_key_hash = Required(str, index=True)
     amount_dai = Required(str)
     amount_unit = Required(int, size=64)
-    processed = Required(bool, index=True)
+    status = Required(str, index=True)
     created_at = Required(datetime)
     updated_at = Required(datetime)
 
@@ -46,7 +46,7 @@ def enqueue(tx_hash: str, block: int, api_key_hash: str, amount_dai: int):
                 api_key_hash = api_key_hash,
                 amount_dai = amount_dai,
                 amount_unit = int(amount_unit),
-                processed = False,
+                status = "new",
                 created_at = now,
                 updated_at = now
             )
@@ -61,4 +61,4 @@ def calc_units(amount_dai_number: int) -> int:
 
 @db_session
 def get_last_processed_block() -> int:
-    return max(t.block for t in Topup if t.processed == True)
+    return max(t.block for t in Topup if t.status != "new")
