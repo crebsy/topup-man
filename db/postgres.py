@@ -1,6 +1,7 @@
 from pony.orm import *
 from datetime import datetime
 from ape.logging import logger
+from ape import chain
 import os
 
 db = Database()
@@ -15,11 +16,13 @@ db.bind(
 
 class Topup(db.Entity):
     topup_id = PrimaryKey(int, auto=True)
+    chain_id = Required(int)
     tx_hash = Required(str, index=True)
     block = Required(int, size=64, index=True)
     api_key_hash = Required(str, index=True)
-    amount_dai = Required(str)
-    amount_unit = Required(int, size=64)
+    amount = Required(str)
+    token = Required(str)
+    amount_units = Required(int, size=64)
     status = Required(str, index=True)
     created_at = Required(datetime)
     updated_at = Required(datetime)
@@ -27,25 +30,27 @@ class Topup(db.Entity):
 db.generate_mapping(create_tables=True)
 
 @db_session
-def enqueue(tx_hash: str, block: int, api_key_hash: str, amount_dai: int):
+def enqueue(tx_hash: str, block: int, api_key_hash: str, amount: int, token: str, rate: float):
     existing = Topup.get(tx_hash = tx_hash, api_key_hash = api_key_hash)
     if not existing:
-        amount_dai_number = 0
+        amount_number = 0
         try:
-            amount_dai_number = int(amount_dai, 16)
+            amount_number = int(amount, 16)
         except Exception as e:
             logger.error(e)
-            logger.error(f"could not parse amount tx_hash {tx_hash}: {amount_dai}")
+            logger.error(f"could not parse amount tx_hash {tx_hash}: {amount}")
             return
-        if amount_dai_number >= 0:
-            amount_unit = calc_units(amount_dai_number)
+        if amount_number >= 0:
+            amount_units = calc_units(amount_number, token, rate)
             now = datetime.now()
             Topup(
+                chain_id = chain.chain_id,
                 tx_hash = tx_hash,
                 block = block,
                 api_key_hash = api_key_hash,
-                amount_dai = amount_dai,
-                amount_unit = int(amount_unit),
+                amount = amount,
+                token = token,
+                amount_units = int(amount_units),
                 status = "new",
                 created_at = now,
                 updated_at = now
@@ -54,9 +59,17 @@ def enqueue(tx_hash: str, block: int, api_key_hash: str, amount_dai: int):
             commit()
 
 
-def calc_units(amount_dai_number: int) -> int:
-    price_per_million = 0.15 * 10**18
-    return 1_000_000 * amount_dai_number / price_per_million
+def calc_units(amount_number: int, token: str, rate: float) -> int:
+    amount_number *= rate
+
+    decimals = 18
+    if token == "USDC":
+        decimals = 6
+
+    amount_number /= 10**decimals
+
+    price_per_million = 0.15
+    return 1_000_000 * amount_number / price_per_million
 
 
 @db_session

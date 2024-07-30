@@ -7,14 +7,20 @@ networks:
       chain_id: 8453
 
 geth:
+  ethereum:
+    mainnet:
+      uri: ${ETHEREUM_RPC_URL}
   base:
     mainnet:
-      uri: ${RPC_URL}
+      uri: ${BASE_RPC_URL}
 
 blockscout:
+  ethereum:
+    mainnet:
+      uri: ${ETHEREUM_EXPLORER_URL}
   base:
     mainnet:
-      uri: ${EXPLORER_URL}
+      uri: ${BASE_EXPLORER_URL}
 
 plugins:
   - name: base

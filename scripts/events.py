@@ -6,15 +6,16 @@ from ape import Contract, chain
 from ape.logging import logger
 from itertools import count
 
-DAI = Contract("0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb")
 SAFE_ADDRESS = os.getenv("SAFE_ADDRESS", None)
 if not SAFE_ADDRESS:
-    logger.error("please provide a SAFE_ADDRESS")#
+    logger.error("Please provide SAFE_ADDRESS")
     exit(1)
 
-SAFE = Contract(SAFE_ADDRESS)
-
 def main():
+    DAI = get_contract("DAI_ADDRESS")
+    USDC = get_contract("USDC_ADDRESS")
+    WETH = get_contract("WETH_ADDRESS")
+
     last_processed = postgres.get_last_processed_block()
     if not last_processed:
         last_processed = os.getenv("START_BLOCK", None)
@@ -29,20 +30,38 @@ def main():
             for r in get_ranges(last_processed, int(log_range_size)):
                 start_block = r[0]
                 end_block = r[1]
-                process_events(start_block, end_block)
+                for token in [DAI, USDC, WETH]:
+                    process_events(token, token.symbol(), start_block, end_block)
+
                 last_processed = end_block
         except Exception as e:
             raise e
         time.sleep(10)
 
 
-def process_events(start_block: int, end_block: int):
-    logger.info(f"start_block={start_block}, end_block={end_block}, diff={end_block-start_block+1}")
-    events = DAI.Transfer.range(
+def process_events(token: Contract, token_symbol: str, start_block: int, end_block: int):
+    WETH_FEED = get_contract("WETH_FEED_ADDRESS")
+    print(token)
+    logger.info(f"token={token_symbol}, start_block={start_block}, end_block={end_block}, diff={end_block-start_block+1}")
+
+    topics = { "to": SAFE_ADDRESS }
+    if chain.chain_id == 1:
+        if token_symbol == "WETH" or token_symbol == "DAI":
+            topics = { "dst": SAFE_ADDRESS }
+    elif chain.chain_id == 8453:
+        if token_symbol == "WETH":
+            topics = { "dst": SAFE_ADDRESS }
+
+    events = token.Transfer.range(
         start_block,
         end_block+1,
-        { "to": SAFE }
+        topics
     )
+
+    rate = 1.0
+    if token_symbol == "WETH":
+        rate = WETH_FEED.latestAnswer() / 10**WETH_FEED.decimals()
+
     for e in events:
         tx = chain.provider._make_request(
             "eth_getTransactionByHash",
@@ -54,21 +73,23 @@ def process_events(start_block: int, end_block: int):
             continue
 
         api_key_hash = call_data[len(call_data)-64:]
-        amount_dai = call_data[len(call_data)-128:-64]
+        amount = call_data[len(call_data)-128:-64]
 
         if len(api_key_hash) != 64:
            logger.error(f"found invalid api_key_hash for tx {e.transaction_hash}: {api_key_hash}")
            continue
 
-        if len(api_key_hash) != 64:
-           logger.error(f"found invalid amount_dai for tx {e.transaction_hash}: {amount_dai}")
+        if len(amount) != 64:
+           logger.error(f"found invalid amount for tx {e.transaction_hash}: {amount}")
            continue
 
         postgres.enqueue(
           e.transaction_hash,
           e.block_number,
           api_key_hash,
-          amount_dai
+          amount,
+          token_symbol,
+          rate
         )
 
 
@@ -87,3 +108,11 @@ def get_ranges(start_block: int, steps: int):
         ranges.append([min(start, to), to])
 
     return ranges
+
+def get_contract(env_name: str):
+    val = os.getenv(env_name, None)
+    if not val:
+        logger.error(f"Please provide {env_name}!")
+        exit(1)
+
+    return Contract(val)

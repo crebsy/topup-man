@@ -25,7 +25,31 @@ services:
       retries: 5
     restart: always
 
-  event-processor:
+  event-processor-base:
+    image: ghcr.io/crebsy/topup-man
+    build: .
+    entrypoint: /app/event-processor.sh
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - POSTGRES_HOST=postgres
+      - SAFE_ADDRESS=0xa98c72B27b474E0fabb69d109dBEE4Af7203c5dc
+      - DAI_ADDRESS=0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb
+      - USDC_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+      - WETH_ADDRESS=0x4200000000000000000000000000000000000006
+      - WETH_FEED_ADDRESS=0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70
+      - START_BLOCK=17777764
+      - BASE_RPC_URL
+      - BASE_EXPLORER_URL
+      - ETHEREUM_RPC_URL
+      - ETHEREUM_EXPLORER_URL
+      - CHAIN_ID=8453
+    depends_on:
+      - postgres
+    restart: always
+
+  event-processor-ethereum:
     image: ghcr.io/crebsy/topup-man
     entrypoint: /app/event-processor.sh
     environment:
@@ -33,10 +57,17 @@ services:
       - POSTGRES_PASSWORD
       - POSTGRES_DB
       - POSTGRES_HOST=postgres
-      - SAFE_ADDRESS
-      - START_BLOCK
-      - RPC_URL
-      - EXPLORER_URL
+      - SAFE_ADDRESS=0x49585002d23e5Fea4CFe2Da946911Ea3909B6B54
+      - DAI_ADDRESS=0x6B175474E89094C44Da98b954EedeAC495271d0F
+      - USDC_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+      - WETH_ADDRESS=0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+      - WETH_FEED_ADDRESS=0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
+      - START_BLOCK=20419491
+      - BASE_RPC_URL
+      - BASE_EXPLORER_URL
+      - ETHEREUM_RPC_URL
+      - ETHEREUM_EXPLORER_URL
+      - CHAIN_ID=1
     depends_on:
       - postgres
     restart: always
@@ -51,8 +82,10 @@ services:
       - POSTGRES_HOST=postgres
       - DYRPC_BASE_URL
       - DYRPC_TOKEN
-      - RPC_URL
-      - EXPLORER_URL
+      - BASE_RPC_URL
+      - BASE_EXPLORER_URL
+      - ETHEREUM_RPC_URL
+      - ETHEREUM_EXPLORER_URL
     depends_on:
       - postgres
     restart: always
